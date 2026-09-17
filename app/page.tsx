@@ -1,69 +1,246 @@
-import Image from "next/image";
+import Link from "next/link";
 
-export default function Home() {
+const FEATURES = [
+  {
+    emoji: "🗣️",
+    title: "Real AI Vendors",
+    body: "Gemini-powered personas with distinct personalities, haggling in Hinglish.",
+    color: "var(--marigold)",
+  },
+  {
+    emoji: "🏙️",
+    title: "Real Markets",
+    body: "Sarojini Nagar, Colaba Causeway, Banjara Market — pick one near you, weather and all.",
+    color: "var(--terracotta)",
+  },
+  {
+    emoji: "👑",
+    title: "Gamified Bargaining",
+    body: "Earn ranks and badges, from Boss Slayer to Certified Bakra.",
+    color: "var(--saffron)",
+  },
+  {
+    emoji: "🔥",
+    title: "Pick Your Difficulty",
+    body: "Easy, Hard, or the brutal Weekly Savage Boss mode.",
+    color: "var(--pink)",
+  },
+];
+
+const STEPS = [
+  { n: "01", text: "Pick your market, item, and vendor" },
+  { n: "02", text: "Set up your shopper profile (and snap a selfie)" },
+  { n: "03", text: "Haggle it out in the chat — the vendor won't go easy" },
+  { n: "04", text: "Walk away with a deal, a floor-price win, or get banned — then share your scorecard" },
+];
+
+function Squiggle() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <svg
+      className="absolute left-0 w-full pointer-events-none"
+      style={{ bottom: "-0.28em" }}
+      height="14"
+      viewBox="0 0 200 14"
+      preserveAspectRatio="none"
+      fill="none"
+      aria-hidden
+    >
+      <path
+        d="M2 9C28 3 40 11 66 7s38-8 64-3 46 9 68 4"
+        stroke="var(--marigold)"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function StartButton({ label = "Start Haggling" }: { label?: string }) {
+  return (
+    <Link
+      href="/play"
+      className="inline-flex items-center justify-center gap-3 border-2 border-[var(--ink)] bg-[var(--marigold)] text-[var(--paper)] px-8 py-5 min-h-[60px] hard-shadow press font-display font-extrabold text-xl sm:text-2xl tracking-[-0.02em]"
+    >
+      {label}
+      <span aria-hidden>→</span>
+    </Link>
+  );
+}
+
+export default function Landing() {
+  return (
+    <main className="min-h-screen flex flex-col">
+      <div className="grain" />
+
+      {/* Ticker */}
+      <div className="border-b-2 border-[var(--ink)] bg-[var(--ink)] text-[var(--paper)] overflow-hidden py-2">
+        <div className="marquee-track">
+          {[0, 1].map((k) => (
+            <span key={k} className="label flex shrink-0">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <span key={i} className="px-5">
+                  No fixed price <span className="text-[var(--marigold)]">✷</span> Bargain or bust{" "}
+                  <span className="text-[var(--marigold)]">✷</span> Three cities, six stalls{" "}
+                  <span className="text-[var(--marigold)]">✷</span>
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Top bar */}
+      <header className="border-b-2 border-[var(--ink)] bg-[var(--paper)]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 h-16 flex items-center justify-between gap-4">
+          <span className="font-display font-extrabold text-lg tracking-[-0.03em]">
+            MOL BHAV<span className="text-[var(--marigold)]">.</span>
+          </span>
+          <Link
+            href="/play"
+            className="label font-bold border-2 border-[var(--ink)] bg-[var(--paper)] px-4 py-2.5 hard-shadow-sm press"
+          >
+            Play now →
+          </Link>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="relative overflow-hidden border-b-2 border-[var(--ink)]">
+        <span
+          aria-hidden
+          className="pointer-events-none select-none absolute -right-6 top-6 text-[110px] sm:text-[170px] opacity-20 rotate-12"
+        >
+          🛍️
+        </span>
+        <span
+          aria-hidden
+          className="pointer-events-none select-none absolute left-[-18px] bottom-4 text-[80px] sm:text-[130px] opacity-15 -rotate-12"
+        >
+          🧵
+        </span>
+        <span
+          aria-hidden
+          className="pointer-events-none select-none absolute right-[18%] bottom-8 text-[60px] sm:text-[90px] opacity-15 rotate-6 hidden sm:block"
+        >
+          🏮
+        </span>
+
+        <div className="relative max-w-6xl mx-auto px-5 sm:px-8 py-16 sm:py-24">
+          <p className="label text-[var(--ink-40)] mb-5">A bargaining game · Live demo</p>
+
+          <h1 className="font-display font-extrabold tracking-[-0.06em] leading-[0.82] text-[clamp(62px,15vw,170px)]">
+            Mol Bhav<span className="text-[var(--marigold)]">.</span>
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+
+          <p className="mt-5 font-serif italic text-[clamp(24px,5vw,44px)] leading-[1.05] max-w-2xl relative inline-block">
+            Everyone has a price. Find{" "}
+            <span className="relative inline-block">
+              theirs
+              <Squiggle />
+            </span>
+            .
           </p>
+
+          <p className="mt-8 sm:mt-10 max-w-xl text-lg sm:text-xl text-[var(--ink-60)] leading-relaxed">
+            Chat and bargain with AI vendor personas from real Indian bazaars — Delhi, Mumbai,
+            Hyderabad — without leaving your couch. They know their floor price. You don&apos;t.
+          </p>
+
+          <div className="mt-10 flex flex-wrap items-center gap-5">
+            <StartButton />
+            <p className="label text-[var(--ink-40)]">Free · No signup</p>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </section>
+
+      {/* Features */}
+      <section className="border-b-2 border-[var(--ink)]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-16 sm:py-20">
+          <div className="flex items-baseline gap-3 mb-10 pb-3 border-b-2 border-[var(--ink)]">
+            <span className="font-mono text-xs font-bold text-[var(--marigold)]">01</span>
+            <h2 className="font-display font-extrabold text-2xl sm:text-3xl tracking-[-0.03em]">
+              What you&apos;re getting into
+            </h2>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {FEATURES.map((f) => (
+              <div
+                key={f.title}
+                className="border-2 border-[var(--ink)] bg-[var(--paper)] p-6 hard-shadow-sm flex flex-col"
+              >
+                <span
+                  className="text-4xl w-14 h-14 border-2 border-[var(--ink)] flex items-center justify-center mb-5"
+                  style={{ background: f.color }}
+                  aria-hidden
+                >
+                  {f.emoji}
+                </span>
+                <h3 className="font-display font-extrabold text-xl tracking-[-0.02em] leading-tight">
+                  {f.title}
+                </h3>
+                <p className="mt-2.5 text-[15px] text-[var(--ink-60)] leading-relaxed">{f.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
-    </div>
+      </section>
+
+      {/* How it works */}
+      <section className="border-b-2 border-[var(--ink)] bg-[var(--paper)]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-16 sm:py-20">
+          <div className="flex items-baseline gap-3 mb-10 pb-3 border-b-2 border-[var(--ink)]">
+            <span className="font-mono text-xs font-bold text-[var(--marigold)]">02</span>
+            <h2 className="font-display font-extrabold text-2xl sm:text-3xl tracking-[-0.03em]">
+              How it works
+            </h2>
+          </div>
+
+          <ol className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+            {STEPS.map((s) => (
+              <li key={s.n} className="flex sm:flex-col gap-4">
+                <span
+                  className="shrink-0 w-14 h-14 rounded-full border-2 border-[var(--ink)] bg-[var(--saffron)] hard-shadow-sm flex items-center justify-center font-display font-extrabold text-xl"
+                  aria-hidden
+                >
+                  {s.n}
+                </span>
+                <p className="font-serif text-xl sm:text-[22px] leading-snug">{s.text}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      {/* Secondary CTA */}
+      <section className="border-b-2 border-[var(--ink)]" style={{ background: "var(--terracotta)" }}>
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-16 sm:py-20 text-[var(--paper)]">
+          <h2 className="font-display font-extrabold tracking-[-0.04em] leading-[0.9] text-[clamp(34px,7vw,68px)] max-w-2xl">
+            The vendor is waiting.
+            <br />
+            He&apos;s already sized you up.
+          </h2>
+          <p className="mt-6 max-w-lg text-lg opacity-85 leading-relaxed">
+            One jacket, one shawl, one pair of knock-off sunglasses. See how far you can push him
+            before the shutter comes down.
+          </p>
+          <div className="mt-10">
+            <StartButton />
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[var(--cream)]">
+        <div className="max-w-6xl mx-auto px-5 sm:px-8 py-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <p className="label text-[var(--ink-40)] leading-relaxed">
+            Mol Bhav is a prototype / demo — not a real shop.
+            <br />
+            No payments, no orders, no actual jackets.
+          </p>
+          <p className="label text-[var(--ink-40)]">© 2026 Mol Bhav</p>
+        </div>
+      </footer>
+    </main>
   );
 }
