@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useSyncExternalStore } from "react";
 import { MARKETS, CITY_TO_MARKET, type Market, type MarketItem, type VendorPersona } from "@/lib/markets";
+import { renderShareCard, shareMessage, whatsappUrl } from "@/lib/shareCard";
 
 const API_URL = "/api/bargain";
 
@@ -92,6 +93,7 @@ export default function Home() {
   const [stage, setStage] = useState("The Pitch");
   const [patience, setPatience] = useState(100);
   const [belowFloorStrikes, setBelowFloorStrikes] = useState(0);
+  const [previousVendorOffer, setPreviousVendorOffer] = useState<number | null>(null);
   const [gameOver, setGameOver] = useState(false);
   const [result, setResult] = useState<BargainResponse | null>(null);
 
@@ -168,6 +170,7 @@ export default function Home() {
     setStage("The Pitch");
     setPatience(100);
     setBelowFloorStrikes(0);
+    setPreviousVendorOffer(null);
     setGameOver(false);
     setResult(null);
     setUserMessage("");
@@ -184,6 +187,7 @@ export default function Home() {
     setStage("The Pitch");
     setPatience(100);
     setBelowFloorStrikes(0);
+    setPreviousVendorOffer(null);
     setGameOver(false);
     setResult(null);
     setUserMessage("");
@@ -209,6 +213,7 @@ export default function Home() {
       setStage(data.emotional_state);
       setPatience(data.patience_remaining);
       setBelowFloorStrikes(data.below_floor_strikes);
+      setPreviousVendorOffer(data.current_counter_offer);
       setMessages((prev) => [
         ...prev,
         { role: "vendor", content: data.vendor_dialogue, tier: data.tier_used },
@@ -257,6 +262,7 @@ export default function Home() {
         stage,
         vendor_patience: patience,
         below_floor_strikes: belowFloorStrikes,
+        previous_vendor_offer: previousVendorOffer ?? item.askingPrice,
         weather_temp_c: activeWeather.temperatureC,
         weather_condition: activeWeather.condition,
       })
@@ -376,6 +382,7 @@ export default function Home() {
               itemName={item.name}
               askingPrice={askingPrice}
               marketName={market.name}
+              city={market.city}
               vendorName={vendor.name}
               avatarDataUrl={avatarDataUrl}
               onPlayAgain={backToPicker}
@@ -1201,6 +1208,7 @@ function ResultTakeover({
   itemName,
   askingPrice,
   marketName,
+  city,
   vendorName,
   avatarDataUrl,
   onPlayAgain,
@@ -1210,6 +1218,7 @@ function ResultTakeover({
   itemName: string;
   askingPrice: number;
   marketName: string;
+  city: string;
   vendorName: string;
   avatarDataUrl: string | null;
   onPlayAgain: () => void;
@@ -1217,6 +1226,104 @@ function ResultTakeover({
   const success = result.session_status === "DEAL_SUCCESS";
   const finalPrice = success ? Math.round(result.current_counter_offer) : askingPrice;
   const savings = success ? result.discount_percentage : 0;
+
+  const [stealth, setStealth] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [shareError, setShareError] = useState<string | null>(null);
+  // Client-only feature detect; the server snapshot is false so hydration matches.
+  const canNativeShare = useSyncExternalStore(
+    () => () => {},
+    () =>
+      typeof navigator !== "undefined" &&
+      typeof navigator.share === "function" &&
+      typeof navigator.canShare === "function",
+    () => false
+  );
+
+  // `stealth` is read here, at generation time, from the current render's state.
+  async function buildCard(): Promise<{ blob: Blob; filename: string }> {
+    const canvas = await renderShareCard({
+      playerName: name,
+      avatarDataUrl,
+      itemName,
+      marketName,
+      city,
+      askingPrice,
+      finalPrice,
+      savingsPct: savings,
+      badge: result.badge_awarded ?? null,
+      success,
+      stealth,
+      origin: window.location.origin,
+    });
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("could not encode image");
+    return { blob, filename: stealth ? "my-haul.png" : "mol-bhav-scorecard.png" };
+  }
+
+  async function downloadCard() {
+    setPreparing(true);
+    setShareError(null);
+    try {
+      const { blob, filename } = await buildCard();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setShareError("Couldn't make the image — try again.");
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  // Shares the real image file through the OS share sheet (WhatsApp, etc.).
+  async function shareCardNatively() {
+    setPreparing(true);
+    setShareError(null);
+    try {
+      const { blob, filename } = await buildCard();
+      const file = new File([blob], filename, { type: "image/png" });
+      if (!navigator.canShare?.({ files: [file] })) {
+        setShareError("Your browser can't share files — use Download instead.");
+        return;
+      }
+      await navigator.share({
+        files: [file],
+        text: shareMessage({
+          success,
+          itemName,
+          marketName,
+          finalPrice,
+          savingsPct: savings,
+          origin: window.location.origin,
+        }),
+      });
+    } catch (e) {
+      // A user dismissing the share sheet throws AbortError — not an error worth showing.
+      if (!(e instanceof Error) || e.name !== "AbortError") {
+        setShareError("Couldn't open the share sheet — use Download instead.");
+      }
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  function challengeFriend() {
+    const msg = shareMessage({
+      success,
+      itemName,
+      marketName,
+      finalPrice,
+      savingsPct: savings,
+      origin: window.location.origin,
+    });
+    window.open(whatsappUrl(msg), "_blank", "noopener,noreferrer");
+  }
 
   return (
     <div className="flex-1 overflow-y-auto px-5 md:px-10 py-10">
@@ -1289,9 +1396,61 @@ function ResultTakeover({
           </div>
         </div>
 
+        {/* Share */}
+        <div className="mt-10 max-w-md border-2 border-[var(--ink)] bg-[var(--cream)] p-5">
+          <p className="label text-[var(--ink-40)] mb-4">Share the damage</p>
+
+          <label className="flex items-start gap-3 cursor-pointer mb-5">
+            <input
+              type="checkbox"
+              checked={stealth}
+              onChange={(e) => setStealth(e.target.checked)}
+              className="mt-1 w-5 h-5 accent-[var(--marigold)] shrink-0"
+            />
+            <span>
+              <span className="font-display font-extrabold text-lg tracking-[-0.02em]">
+                🥷 Stealth Mode
+              </span>
+              <span className="block text-sm text-[var(--ink-60)] leading-snug mt-0.5">
+                Just the haul — no badge, no savings, no trace of the game.
+              </span>
+            </span>
+          </label>
+
+          <div className="flex flex-col gap-3">
+            {canNativeShare && (
+              <button
+                type="button"
+                onClick={shareCardNatively}
+                disabled={preparing}
+                className="w-full border-2 border-[var(--ink)] bg-[var(--marigold)] text-[var(--paper)] py-4 min-h-[56px] hard-shadow-sm press font-display font-extrabold text-lg tracking-[-0.02em] disabled:opacity-50 disabled:pointer-events-none"
+              >
+                {preparing ? "Generating card…" : "📤 Share Card"}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={downloadCard}
+              disabled={preparing}
+              className="w-full border-2 border-[var(--ink)] bg-[var(--paper)] py-4 min-h-[56px] hard-shadow-sm press font-display font-extrabold text-lg tracking-[-0.02em] disabled:opacity-50 disabled:pointer-events-none"
+            >
+              {preparing ? "Generating card…" : "⬇️ Download Card"}
+            </button>
+            <button
+              type="button"
+              onClick={challengeFriend}
+              className="w-full border-2 border-[var(--ink)] bg-[var(--green)] text-[var(--paper)] py-4 min-h-[56px] hard-shadow-sm press font-display font-extrabold text-lg tracking-[-0.02em]"
+            >
+              💬 Challenge a Friend
+            </button>
+          </div>
+
+          {shareError && <p className="label text-[var(--pink)] mt-3">{shareError}</p>}
+        </div>
+
         <button
           onClick={onPlayAgain}
-          className="mt-12 mb-4 w-full max-w-md border-2 border-[var(--ink)] bg-[var(--marigold)] text-[var(--paper)] py-5 hard-shadow press font-display font-extrabold text-xl tracking-[-0.02em]"
+          className="mt-6 mb-4 w-full max-w-md border-2 border-[var(--ink)] bg-[var(--marigold)] text-[var(--paper)] py-5 hard-shadow press font-display font-extrabold text-xl tracking-[-0.02em]"
         >
           🔄 Play Again
         </button>

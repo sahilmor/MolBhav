@@ -26,6 +26,7 @@ interface BargainRequestBody {
   stage?: string;
   vendor_patience?: number;
   below_floor_strikes?: number;
+  previous_vendor_offer?: number;
   weather_temp_c?: number | null;
   weather_condition?: string | null;
 }
@@ -182,16 +183,44 @@ export async function POST(req: NextRequest) {
     } satisfies BargainResponseBody);
   }
 
-  // IN PROGRESS
-  const newPatience = Math.max(0, vendorPatience - 25);
-  let dialogueFallback: string, nextStage: string, counter: number;
-  if (body.current_offer < body.asking_price * 0.4) {
-    dialogueFallback = `Arey ${honorific}! ₹${Math.round(body.current_offer)}? Mera ghar neelam karwaoge kya? Sahi daam lagao!`;
-    nextStage = "The Shock"; counter = body.asking_price * 0.85;
-  } else {
-    dialogueFallback = `Dekho ${honorific}, last price ₹${Math.round(body.asking_price * 0.75)} lagega. Utne me chahiye toh bolo.`;
-    nextStage = "The Squeeze"; counter = body.asking_price * 0.75;
+  // LUCKY BREAK — Easy Mode only. A modest below-floor offer sometimes lands.
+  // Hard Mode and Savage Boss are untouched: they already returned above.
+  if (
+    body.game_mode === "easy" &&
+    body.current_offer >= floorPrice * 0.85 &&
+    body.current_offer < floorPrice &&
+    Math.random() < 0.2
+  ) {
+    const savingsPct = ((body.asking_price - body.current_offer) / body.asking_price) * 100;
+    const fallback = `Arey ${honorific}, aaj dhandha manda hai... chalo le jao ₹${Math.round(body.current_offer)} me, kisi ko batana mat!`;
+    const dialogue = await generateVendorDialogue({
+      honorific, gameMode: body.game_mode, stage, askingPrice: body.asking_price,
+      currentOffer: body.current_offer, discountPct: savingsPct, patience: vendorPatience,
+      ...persona,
+      outcome: "lucky_break", tier, fallback,
+    });
+    return NextResponse.json({
+      vendor_dialogue: dialogue, emotional_state: "Resolution", patience_remaining: vendorPatience,
+      current_counter_offer: body.current_offer, session_status: "DEAL_SUCCESS",
+      tier_used: tier, discount_percentage: savingsPct, badge_awarded: "🍀 Lucky Break",
+      below_floor_strikes: belowFloorStrikes,
+    } satisfies BargainResponseBody);
   }
+
+  // IN PROGRESS — the vendor converges toward the floor from its own last offer,
+  // so repeated offers in the same range no longer produce an identical counter.
+  const newPatience = Math.max(0, vendorPatience - 25);
+  const previousVendorOffer = body.previous_vendor_offer ?? body.asking_price;
+  const isDeepLowball = body.current_offer < body.asking_price * 0.4;
+  const nextStage = isDeepLowball ? "The Shock" : "The Squeeze";
+  const concessionRate = isDeepLowball ? 0.15 : 0.35;
+  const gap = Math.max(0, previousVendorOffer - floorPrice);
+  let counter = Math.max(floorPrice, previousVendorOffer - gap * concessionRate);
+  counter = Math.round(counter / 10) * 10;
+
+  const dialogueFallback = isDeepLowball
+    ? `Arey ${honorific}! ₹${Math.round(body.current_offer)}? Mera ghar neelam karwaoge kya? ₹${counter} se ek rupya kam nahi!`
+    : `Dekho ${honorific}, last price ₹${counter} lagega. Utne me chahiye toh bolo.`;
   const dialogue = await generateVendorDialogue({
     honorific, gameMode: body.game_mode, stage, askingPrice: body.asking_price,
     currentOffer: body.current_offer, discountPct: discountOffered, patience: vendorPatience,
