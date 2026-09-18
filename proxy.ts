@@ -10,6 +10,14 @@ export async function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Legacy admin login link — send it straight to the shared page.
+  if (pathname === "/admin/login") {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "?next=%2Fadmin";
+    return NextResponse.redirect(url);
+  }
+
   const session = await verifySessionToken(
     req.cookies.get(SESSION_COOKIE)?.value,
     process.env.ADMIN_SESSION_SECRET
