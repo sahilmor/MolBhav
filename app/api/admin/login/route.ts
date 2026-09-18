@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { SESSION_COOKIE, SESSION_TTL_MS, createSessionToken } from "@/lib/adminAuth";
+import { SESSION_COOKIE, SESSION_TTL_MS, createSessionToken } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -59,12 +59,16 @@ export async function POST(req: NextRequest) {
   attempts.delete(ip);
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(SESSION_COOKIE, await createSessionToken(secret), {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: Math.floor(SESSION_TTL_MS / 1000),
-  });
+  res.cookies.set(
+    SESSION_COOKIE,
+    await createSessionToken({ sub: "env-admin", email: "admin@env", role: "admin" }, secret),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(SESSION_TTL_MS / 1000),
+    }
+  );
   return res;
 }

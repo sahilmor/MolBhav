@@ -95,12 +95,20 @@ export default function Landing() {
           <span className="font-display font-extrabold text-lg tracking-[-0.03em]">
             MOL BHAV<span className="text-[var(--marigold)]">.</span>
           </span>
-          <Link
-            href="/play"
-            className="label font-bold border-2 border-[var(--ink)] bg-[var(--paper)] px-4 py-2.5 hard-shadow-sm press"
-          >
-            Play now →
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/login"
+              className="label font-bold border-2 border-[var(--ink)] bg-[var(--paper)] px-4 py-2.5 min-h-[44px] flex items-center hard-shadow-sm press"
+            >
+              Log in
+            </Link>
+            <Link
+              href="/play"
+              className="label font-bold border-2 border-[var(--ink)] bg-[var(--marigold)] text-[var(--paper)] px-4 py-2.5 min-h-[44px] flex items-center hard-shadow-sm press"
+            >
+              Play now →
+            </Link>
+          </div>
         </div>
       </header>
 

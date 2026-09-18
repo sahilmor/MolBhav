@@ -46,6 +46,11 @@ async function db(): Promise<Db> {
   return (await connect()).db(dbName);
 }
 
+/** Shared handle for other modules (e.g. lib/users.ts). */
+export async function getDb(): Promise<Db> {
+  return db();
+}
+
 /**
  * Without MONGODB_URI the app falls back to a per-instance memory store so the
  * game and admin panel still run. It does NOT persist across restarts or
