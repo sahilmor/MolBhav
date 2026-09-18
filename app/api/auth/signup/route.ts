@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createUser, findUserByEmail, normalizeEmail, toPublic } from "@/lib/users";
+import { isDbUnreachable } from "@/lib/db";
 import { SESSION_COOKIE, SESSION_TTL_MS, createSessionToken } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -51,6 +52,17 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (e) {
     console.error("Signup failed:", e);
+    if (isDbUnreachable(e)) {
+      return NextResponse.json(
+        { error: "Can't reach the database — try again once it's back." },
+        { status: 503 }
+      );
+    }
+    // The unique index is the real guard against two concurrent signups racing
+    // past the findUserByEmail check above.
+    if ((e as { code?: number })?.code === 11000) {
+      return NextResponse.json({ error: "That email is already registered." }, { status: 409 });
+    }
     return NextResponse.json({ error: "Couldn't create the account. Try again." }, { status: 500 });
   }
 }

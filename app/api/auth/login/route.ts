@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyCredentials, toPublic } from "@/lib/users";
+import { isDbUnreachable } from "@/lib/db";
 import { SESSION_COOKIE, SESSION_TTL_MS, createSessionToken } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -74,6 +75,12 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (e) {
     console.error("Login failed:", e);
+    if (isDbUnreachable(e)) {
+      return NextResponse.json(
+        { error: "Can't reach the database — this is a server problem, not your password." },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: "Couldn't sign you in. Try again." }, { status: 500 });
   }
 }

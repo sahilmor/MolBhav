@@ -9,7 +9,12 @@ type Mode = "signin" | "signup";
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next");
+  // Only same-origin paths are honoured. `next` is attacker-controllable, and
+  // pushing an absolute URL would turn this page into an open redirect: sign in
+  // on the real domain, get bounced to a lookalike that asks for the password
+  // again. "//evil.com" is protocol-relative, so it has to be rejected too.
+  const rawNext = params.get("next");
+  const next = rawNext && /^\/(?!\/)/.test(rawNext) ? rawNext : null;
 
   const [mode, setMode] = useState<Mode>("signin");
   const [email, setEmail] = useState("");

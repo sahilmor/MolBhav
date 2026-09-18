@@ -37,9 +37,48 @@ declare global {
 function connect(): Promise<MongoClient> {
   if (!uri) throw new Error("MONGODB_URI is not set");
   if (!globalThis._molBhavMongo) {
-    globalThis._molBhavMongo = new MongoClient(uri).connect();
+    globalThis._molBhavMongo = new MongoClient(uri, {
+      // Fail fast rather than sitting out the whole function timeout when the
+      // cluster is unreachable; the default is 30s.
+      serverSelectionTimeoutMS: 8000,
+    })
+      .connect()
+      .catch((e) => {
+        // A rejected promise must not stay cached, or one failed connect would
+        // poison every later request on this warm instance — the DB would look
+        // broken long after it came back.
+        globalThis._molBhavMongo = undefined;
+        throw e;
+      });
   }
   return globalThis._molBhavMongo;
+}
+
+/**
+ * True when the failure is the connection itself (cluster unreachable, TLS
+ * handshake refused, DNS) rather than a query or auth problem. Callers use this
+ * to answer 503 instead of a generic 500, so "the database is down" never gets
+ * reported to a user as "wrong password".
+ */
+export function isDbUnreachable(e: unknown): boolean {
+  const name = (e as { name?: string })?.name ?? "";
+  return (
+    name === "MongoServerSelectionError" ||
+    name === "MongoNetworkError" ||
+    name === "MongoNetworkTimeoutError" ||
+    name === "MongoTopologyClosedError"
+  );
+}
+
+/** Coarse connectivity probe for the health endpoint. Never surfaces the URI. */
+export async function pingDb(): Promise<{ ok: boolean; reason?: string }> {
+  if (!dbConfigured) return { ok: false, reason: "not-configured" };
+  try {
+    await (await connect()).db(dbName).command({ ping: 1 });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, reason: isDbUnreachable(e) ? "unreachable" : "error" };
+  }
 }
 
 async function db(): Promise<Db> {
