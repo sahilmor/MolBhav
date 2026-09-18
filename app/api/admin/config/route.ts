@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminConfig, setAdminConfig, redisConfigured } from "@/lib/redis";
+import { getAdminConfig, setAdminConfig, dbConfigured } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -8,7 +8,7 @@ const MIN_RATE = 0.0001;
 const MAX_RATE = 0.05;
 
 export async function GET() {
-  return NextResponse.json({ config: await getAdminConfig(), redisConfigured });
+  return NextResponse.json({ config: await getAdminConfig(), dbConfigured });
 }
 
 export async function PATCH(req: NextRequest) {
@@ -41,5 +41,5 @@ export async function PATCH(req: NextRequest) {
   }
 
   await setAdminConfig(next);
-  return NextResponse.json({ config: next, redisConfigured });
+  return NextResponse.json({ config: next, dbConfigured });
 }

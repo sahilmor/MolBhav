@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
-import { getAdminConfig, getSponsors, type Sponsor } from "@/lib/redis";
+import { getAdminConfig, getSponsors, type Sponsor } from "@/lib/db";
 
 // Model choice is constrained by what a free-tier key can actually call:
 // gemini-1.5-* retired; gemini-2.5-pro 404s ("not available to new users");

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSponsors, setSponsors, redisConfigured, type Sponsor } from "@/lib/redis";
+import { getSponsors, addSponsor, dbConfigured } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  return NextResponse.json({ sponsors: await getSponsors(), redisConfigured });
+  return NextResponse.json({ sponsors: await getSponsors(), dbConfigured });
 }
 
 export async function POST(req: NextRequest) {
@@ -25,15 +25,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Discount must be between 1 and 100." }, { status: 400 });
   }
 
-  const sponsors = await getSponsors();
-  const sponsor: Sponsor = {
-    id: crypto.randomUUID(),
+  const sponsor = await addSponsor({
     name,
-    emoji: emoji || "🎁",
+    emoji: emoji || "\u{1F381}",
     discountPercent: Math.round(discountPercent),
-    active: true,
-    createdAt: new Date().toISOString(),
-  };
-  await setSponsors([...sponsors, sponsor]);
+  });
   return NextResponse.json(sponsor, { status: 201 });
 }

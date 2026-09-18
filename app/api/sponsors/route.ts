@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSponsors } from "@/lib/redis";
+import { getSponsors } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

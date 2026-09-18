@@ -14,7 +14,7 @@ interface Sponsor {
 
 export default function SponsorManager() {
   const [sponsors, setSponsors] = useState<Sponsor[] | null>(null);
-  const [redisConfigured, setRedisConfigured] = useState(true);
+  const [dbConfigured, setDbConfigured] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -28,7 +28,7 @@ export default function SponsorManager() {
       if (!res.ok) throw new Error();
       const d = await res.json();
       setSponsors(d.sponsors);
-      setRedisConfigured(d.redisConfigured);
+      setDbConfigured(d.dbConfigured);
     } catch {
       setError("Couldn't load sponsors.");
     }
@@ -41,7 +41,7 @@ export default function SponsorManager() {
       .then((d) => {
         if (cancelled || !d) return;
         setSponsors(d.sponsors);
-        setRedisConfigured(d.redisConfigured);
+        setDbConfigured(d.dbConfigured);
       })
       .catch(() => !cancelled && setError("Couldn't load sponsors."));
     return () => {
@@ -110,10 +110,10 @@ export default function SponsorManager() {
         </Link>
       </div>
 
-      {!redisConfigured && (
+      {!dbConfigured && (
         <div className="border-2 border-[var(--pink)] bg-[var(--pink)] text-[var(--paper)] p-4 mb-8">
           <p className="label leading-relaxed">
-            No Upstash credentials — memory store only. Changes will NOT persist.
+            No MONGODB_URI set — memory store only. Changes will NOT persist.
           </p>
         </div>
       )}

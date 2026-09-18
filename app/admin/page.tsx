@@ -10,7 +10,7 @@ interface AdminConfig {
 
 export default function AdminDashboard() {
   const [config, setConfig] = useState<AdminConfig | null>(null);
-  const [redisConfigured, setRedisConfigured] = useState(true);
+  const [dbConfigured, setDbConfigured] = useState(true);
   const [rateInput, setRateInput] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +23,7 @@ export default function AdminDashboard() {
       .then((d) => {
         if (cancelled) return;
         setConfig(d.config);
-        setRedisConfigured(d.redisConfigured);
+        setDbConfigured(d.dbConfigured);
         setRateInput(String((d.config.savageBossWinRateOverride * 100).toFixed(2)));
       })
       .catch(() => !cancelled && setError("Couldn't load config."));
@@ -76,10 +76,10 @@ export default function AdminDashboard() {
         </Link>
       </div>
 
-      {!redisConfigured && (
+      {!dbConfigured && (
         <div className="border-2 border-[var(--pink)] bg-[var(--pink)] text-[var(--paper)] p-4 mb-8">
           <p className="label leading-relaxed">
-            No Upstash credentials — running on a per-instance memory store. Changes will NOT
+            No MONGODB_URI set — running on a per-instance memory store. Changes will NOT
             persist across restarts or serverless instances.
           </p>
         </div>
