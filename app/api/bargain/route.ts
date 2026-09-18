@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { getAdminConfig, getSponsors, type Sponsor } from "@/lib/redis";
 
 // Model choice is constrained by what a free-tier key can actually call:
 // gemini-1.5-* retired; gemini-2.5-pro 404s ("not available to new users");
@@ -31,6 +32,40 @@ interface BargainRequestBody {
   weather_condition?: string | null;
 }
 
+interface SponsorVoucher {
+  sponsorName: string;
+  discountPercent: number;
+  code: string;
+}
+
+/**
+ * Admin-controlled extras. Never allowed to break a turn: if the store is
+ * unreachable the game falls back to no voucher and the stock Savage Boss ban.
+ */
+async function loadAdminExtras(): Promise<{ campaignActive: boolean; winRate: number; sponsors: Sponsor[] }> {
+  try {
+    const [config, sponsors] = await Promise.all([getAdminConfig(), getSponsors()]);
+    return {
+      campaignActive: config.campaignActive,
+      winRate: config.savageBossWinRateOverride,
+      sponsors: sponsors.filter((s) => s.active),
+    };
+  } catch (e) {
+    console.error("Admin config/sponsor lookup failed; continuing without them:", e);
+    return { campaignActive: false, winRate: 0, sponsors: [] };
+  }
+}
+
+function issueVoucher(campaignActive: boolean, sponsors: Sponsor[]): SponsorVoucher | null {
+  if (!campaignActive || sponsors.length === 0) return null;
+  const sponsor = sponsors[Math.floor(Math.random() * sponsors.length)];
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let suffix = "";
+  for (let i = 0; i < 6; i++) suffix += alphabet[Math.floor(Math.random() * alphabet.length)];
+  const prefix = sponsor.name.replace(/[^a-zA-Z]/g, "").slice(0, 4).toUpperCase();
+  return { sponsorName: sponsor.name, discountPercent: sponsor.discountPercent, code: `${prefix}${suffix}` };
+}
+
 interface BargainResponseBody {
   vendor_dialogue: string;
   emotional_state: string;
@@ -41,6 +76,7 @@ interface BargainResponseBody {
   discount_percentage: number;
   badge_awarded?: string;
   below_floor_strikes: number;
+  sponsor_voucher?: SponsorVoucher | null;
 }
 
 function getFloorPrice(askingPrice: number, gameMode: string): number {
@@ -112,6 +148,8 @@ export async function POST(req: NextRequest) {
     weatherCondition: body.weather_condition ?? null,
   };
 
+  const extras = await loadAdminExtras();
+
   // HARD MODE — two-strike rule: first below-floor offer warns, second one bans
   if (body.game_mode === "hard" && body.current_offer < floorPrice) {
     if (belowFloorStrikes === 0) {
@@ -144,8 +182,25 @@ export async function POST(req: NextRequest) {
     } satisfies BargainResponseBody);
   }
 
-  // SAVAGE BOSS — instant ban, unchanged
+  // SAVAGE BOSS — an admin-tuned sliver of over-the-cap offers survive; the rest ban as before.
   if (body.game_mode === "savage_boss" && discountOffered > 15.0) {
+    if (extras.winRate > 0 && Math.random() < extras.winRate) {
+      const savingsPct = discountOffered;
+      const fallback = `Arey ${honorific}... aaj mera mood acha hai. Le jao, ₹${Math.round(body.current_offer)} me. Kisi ko mat batana!`;
+      const dialogue = await generateVendorDialogue({
+        honorific, gameMode: body.game_mode, stage, askingPrice: body.asking_price,
+        currentOffer: body.current_offer, discountPct: savingsPct, patience: vendorPatience,
+        ...persona,
+        outcome: "boss_slayer_upset", tier, fallback,
+      });
+      return NextResponse.json({
+        vendor_dialogue: dialogue, emotional_state: "Resolution", patience_remaining: vendorPatience,
+        current_counter_offer: body.current_offer, session_status: "DEAL_SUCCESS",
+        tier_used: tier, discount_percentage: savingsPct, badge_awarded: "👑 BOSS SLAYER",
+        below_floor_strikes: belowFloorStrikes,
+        sponsor_voucher: issueVoucher(extras.campaignActive, extras.sponsors),
+      } satisfies BargainResponseBody);
+    }
     const fallback = `Savage Boss says: 'Mera dhandha band karwaoge kya, ${honorific}? Out of my shop!'`;
     const dialogue = await generateVendorDialogue({
       honorific, gameMode: body.game_mode, stage, askingPrice: body.asking_price,
@@ -180,6 +235,7 @@ export async function POST(req: NextRequest) {
       current_counter_offer: body.current_offer, session_status: "DEAL_SUCCESS",
       tier_used: tier, discount_percentage: savingsPct, badge_awarded: badge,
       below_floor_strikes: belowFloorStrikes,
+      sponsor_voucher: issueVoucher(extras.campaignActive, extras.sponsors),
     } satisfies BargainResponseBody);
   }
 
@@ -204,6 +260,7 @@ export async function POST(req: NextRequest) {
       current_counter_offer: body.current_offer, session_status: "DEAL_SUCCESS",
       tier_used: tier, discount_percentage: savingsPct, badge_awarded: "🍀 Lucky Break",
       below_floor_strikes: belowFloorStrikes,
+      sponsor_voucher: issueVoucher(extras.campaignActive, extras.sponsors),
     } satisfies BargainResponseBody);
   }
 

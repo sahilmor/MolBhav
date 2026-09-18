@@ -26,6 +26,7 @@ interface BargainResponse {
   discount_percentage: number;
   badge_awarded?: string | null;
   below_floor_strikes: number;
+  sponsor_voucher?: { sponsorName: string; discountPercent: number; code: string } | null;
 }
 
 interface Message {
@@ -1352,6 +1353,19 @@ function ResultTakeover({
             </div>
           )}
         </div>
+
+        {result.sponsor_voucher && (
+          <div className="mt-8 max-w-md border-2 border-[var(--ink)] bg-[var(--saffron)] p-5 hard-shadow">
+            <p className="label text-[var(--ink)] opacity-70 mb-2">🎁 Voucher unlocked</p>
+            <p className="font-display font-extrabold text-xl leading-tight tracking-[-0.02em]">
+              You&apos;ve unlocked a voucher from {result.sponsor_voucher.sponsorName}
+            </p>
+            <p className="font-mono text-2xl font-bold mt-3 tracking-[0.08em] break-all">
+              {result.sponsor_voucher.code}
+            </p>
+            <p className="text-sm mt-1">{result.sponsor_voucher.discountPercent}% off</p>
+          </div>
+        )}
 
         <blockquote className="mt-8 border-l-4 border-[var(--marigold)] pl-5">
           <p className="font-serif italic text-2xl leading-snug">
